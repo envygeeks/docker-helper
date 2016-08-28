@@ -1,0 +1,431 @@
+#!/bin/sh
+[ "$DEBUG" ] && set -x
+set -e
+
+# --
+# @echo Nothing
+# @vars repo, repo_branch, repo_type=git|github
+# Pull out a dependency based on Git.
+# @return 0
+# --
+ruby_depend_repo() {
+  local _repo=$(echo "$1" | awk -F, '{
+    printf $2;
+    for (i = 3; i <= NF; i++) {
+      if ($i != "") {
+        printf ","$i;
+      }
+    }
+  }')
+
+  if [ "$_repo" ]; then
+
+    # These are global variables for your using.  You can
+    # unset them if you like but they don't really affect anything
+    # at the end of the day as they are uniq varaibles that we
+    # only use in the context of this application.
+
+    repo=$(echo $repo | awk -F@ '{ print $1 }')
+    repo_branch=$(echo $repo | awk -F@ '{ print $2 }')
+    repo_type=git
+
+    # When the user chooses to send us just a username/repo
+    # this will get triggered so that we can do the Github style
+    # Gem inside of your Gemfile for you.
+
+    if ! echo $repo | grep -qE '^(http(s)?:\/\/|git:\/\/)'
+      then repo_type=github
+    fi
+  fi
+
+  return 0
+}
+
+#--
+# @echo Nothing
+# Pull out a gem dependency.
+# This also works for Repo dependencies, that should also use this.
+# @vars gem_name, gem_version
+# @return 0
+# --
+ruby_depend_gem() {
+  gem_name=$(echo $1 | awk -F, '{ print $1 }' | awk -F@ '{ print $1 }')
+  gem_version=$(echo $1 | awk -F, '{ print $1 }' | awk -F@ '{ print $2 }')
+  return 0
+}
+
+#--
+# @echo If $2 == "stdout"
+# Add a dependency to the users Gemfile.
+# @return 0
+# --
+add_gemfile_dependency() {
+  tmpfile=$(tempfile -n Gemfile)
+  cp Gemfile $tmpfile
+
+  ruby_depend_repo "$1"
+  ruby_depend_gem  "$1"
+
+  if [ "$repo" ]; then
+
+    # gem "docker-template", "0.1", :github => "envygeeks/docker-template", :branch => "master"
+    # gem "docker-template", "0.1", :git => "https://github.com/envygeeks/docker-template.git", :branch => "branch"
+    # docker-template@0.1,https://github.com/envygeeks/docker-template.git@master
+    # docker-template@0.1,envygeeks/docker-template@master
+
+    if [ "$repo_branch" ] && [ "$gem_version" ]; then
+      printf '\ngem "%s", "%s", :%s => "%s", :branch => "%s"\n' \
+          "$gem_name" "$gem_version" \
+          "$repo_type" "$repo" "$repo_branch" \
+              >> $tmpfile
+
+    # docker-template,envygeeks/docker-template@master
+    # docker-template,https://github.com/envygeeks/docker-template.git@master
+    # gem "n", :git => "r", :branch => "b"
+
+    elif [ "$repo_branch" ]; then
+      printf '\ngem "%s", :%s => "%s", :branch => "%s"\n' \
+          "$gem_name" \
+          "$repo_type" "$repo" "$repo_branch" \
+              >> $tmpfile
+
+    # docker-template@0.1,envygeeks/docker-template
+    # docker-template@0.1,https://github.com/envygeeks/docker-template.git
+    # gem "docker-template", "0.1", :git => "https://github.com/envygeeks/docker-template.git"
+    # gem "docker-tmeplate", "0.1", :github => "envygeeks/docker-template"
+
+    elif [ "$gem_version" ]; then
+      printf '\ngem "%s", "%s", :%s => "%s"\n' \
+          "$gem_name" "$gem_version" \
+          "$repo_type" "$repo" \
+              >> $tmpfile
+
+    # docker-template,envygeeks/docker-template
+    # docker-template,https://github.com/envygeeks/docker-template.git
+    # gem "docker-template", :git => "https://github.com/envygeeks/docker-template.git"
+    # gem "docker-template", :github => "envygeeks/docker-template"
+
+    else
+      printf '\ngem "%s", :%s => "%s"\n' \
+          "$gem_name" \
+          "$repo_type" "$repo" \
+              >> $tmpfile
+    fi
+
+  elif [ "$gem_version" ]; then
+    printf '\ngem "%s", "%s"\n' \
+        "$gem_name" "$gem_version" \
+            >> Gemfile
+
+  else
+    printf '\ngem "%s"\n' "$gem_name" >> Gemfile
+  fi
+
+  cp $tmpfile Gemfile
+  [ "$2" = stdout ] && echo $(cat $tmpfile)
+  rm -rf $tmpfile
+  return 0
+}
+
+#--
+# @echo Nothing
+# Install a Gem rather than add it to your Gemfile.
+# @return 0
+# --
+ruby_install_gem() {
+  ruby_depend_repo "$1"
+  ruby_depend_gem  "$1"
+
+  if [ "$repo" ]; then
+    echo "Installing gem with git_clone_ruby_repo."
+    echo "Please use that directly if you can, it's preferrable."
+    git_clone_ruby_repo "$1"
+
+  else
+
+    # gem install docker-template -v "0.1" -v "< 0.2"
+    # We constrain it so you get what you expect and no more.
+    # docker-template@0.1
+
+    if echo $gem_version | grep -qE "^[0-9]+\.[0-9]$"; then
+      max_version=$(awk "BEGIN{print $gem_version + 0.1}")
+      gem install "$gem_name" \
+          -v "$gem_version" \
+          -v "< $max_version" \
+          --no-document
+
+    # gem install docker-template -v "0" -v "< 1"
+    # We constrain it widely so you get a range of what you want.
+    # docker-template@0
+
+    elif echo $gem_version | grep -qE "^[0-9]+$"; then
+      max_version=$(awk "BEGIN{print $gem_version + 1}")
+      gem install "$gem_name" \
+          -v "$gem_version" \
+          -v "< $max_version" \
+          --no-document
+
+    elif [ "$gem_version" ]; then
+      gem install "$gem_name" \
+          -v "$gem_version" \
+              --no-document
+
+    else
+      # When there is no version at all.
+      gem install "$gem_name" \
+          --no-document
+    fi
+  fi
+
+  return 0
+}
+
+#--
+# @echo the repo location.
+# gem@version,user/repo@branch
+# gem@version,https://github.com:envygeeks/repo.git@branch
+# gem@version,git://github.com:envygeeks/repo.git@branch
+# gem@version
+#--
+git_clone_ruby_repo() {
+  ruby_depend_repo "$1"
+  ruby_depend_gem  "$1"
+
+  [ -z "$repo" ] && return
+  [ "$repo_type" = github ] && repo_name=https://github.com/$repo_name.git
+  temp=$(mktemp -d)
+
+  if [ "$repo_branch" ]
+    then git clone --depth=1 --single-branch --branch=master "$repo_name" $temp
+    else git clone --depth=1 --single-branch --branch=$repo_branch "$repo_name" $temp
+  fi
+
+  echo $temp
+  return 0
+}
+
+#--
+# @echo Nothing
+# Allows you to check if you have backed up your Gemfile before.
+# @return 0|1
+# --
+has_previous_gemfile() {
+  if [ -d vendor/ ] && [ "$(find vendor/ -type f -name Gemfile.old.\*)" ]
+    then return 0
+    else return 1
+  fi
+}
+
+#--
+# @echo Nothing
+# Backup the Gemfile by day.
+# @return 0
+# --
+backup_gemfile() {
+  if [ -f Gemfile ]; then
+    mkdir -p vendor/
+    cp Gemfile "vendor/Gemfile.old.$(date +%m%d%Y)"
+  fi
+
+  return 0
+}
+
+#--
+# @echo Nothing
+# Takes the gems the image provides inside of /usr/share/ruby/default-gems
+# and installs them into the users Gemfile so they have no problems.
+# @return 0
+# --
+copy_default_gems_to_gemfile() {
+  if [ -f Gemfile ] && [ -f /usr/share/ruby/default-gems ]; then
+    for gem in $(cat /usr/share/ruby/default-gems); do
+      add_gemfile_dependency "$gem"
+    done
+  fi
+
+  return 0
+}
+
+#--
+# @echo Nothing
+# Takes the gems the image provides inside of /usr/share/ruby/default-gems
+# and installs them into the system gems.
+# @return 0
+# --
+install_default_gems() {
+  if [ -f /usr/share/ruby/default-gems ]; then
+    for gem in $(cat /usr/share/ruby/default-gems); do
+      ruby_install_gem "$gem"
+    done
+  fi
+
+  return 0
+}
+
+#--
+# Triggers an install or exists if one was already ran.
+# @echo On Error
+# @return 1 | 0
+#--
+___ruby_scream_fatality_or_install() {
+  if [ $1 -gt 2 ] && user_pkgs_installed; then
+    >&2 echo "There was an install error."
+    return 1
+  elif [ $1 -gt 1 ]; then
+    install_ruby_depends
+    install_user_pkgs_from_file
+  fi
+
+  return 0
+}
+
+#--
+# @envvar BUNDLE_CACHE
+# @envvar BUNDLE_CACHE_PATH
+# @envvar SILENCE_BUNDLER
+# @envvar BUNDLE_ARGS
+#
+# @echo Nothing
+# Installs gems from a users Gemfile w/ safety.
+# This safety is that if dependencies are missing it will install
+# the default dependencies that most accept.
+# @return 0|1
+#--
+install_users_gems() {
+  if [ -f Gemfile ]; then
+    for i in 1 2 3; do
+      ___ruby_scream_fatality_or_install $i
+      [ -n "$SILENCE_BUNDLER" ] && exec >/dev/null
+      if should_bundle_install; then
+        if [ -z "$BUNDLE_CACHE" ]
+          then echo "$BUNDLE_ARGS" | xargs -n1 | xargs -- bundle install && break
+          else echo "$BUNDLE_ARGS" | xargs -n1 | xargs -- bundle install --path \
+            ${BUNDLE_CACHE_PATH:-"vendor/bundle"} && break
+        fi
+
+      else
+        gem install -g Gemfile && break
+      fi
+    done
+  fi
+
+  return 0
+}
+
+#--
+# @envvar BUNDLE_CACHE
+# @envvar FORCE_BUNDLE
+# @envvar BUNDLE_FORCE
+# @envvar BUNDLE_ARGS
+#
+# @echo Nothing
+# Whether or not we should install with Bundler.
+# @return 0|1
+# --
+should_bundle_install() {
+  if has_git_gemfile || [ -n "$BUNDLE_CACHE" ] || [ -n "$FORCE_BUNDLE" ] \
+      || [ -n "$BUNDLE_ARGS"] || [ -n "$BUNDLE_FORCE" ]
+    then return 0
+    else return 1
+  fi
+}
+
+#--
+
+will_bundle_install() {
+  should_bundle_install
+}
+
+#--
+
+__bundle_cmd() {
+  ruby -e '
+    comp = ARGV[1..-1]
+    if comp.include?("bundle") && comp.include?(ARGV[0])
+      then exit 0
+      else exit 1
+    end
+  ' "$@"
+}
+
+#--
+# @echo Nothing
+# Check to see if the user is using bundler.
+# @return 0|1
+# --
+is_bundle_cmd() {
+  ! __bundle_cmd update "$@" && ! __bundle_cmd install "$@" \
+      && ! __bundle_cmd clean "$@"
+}
+
+#--
+# @echo Nothing.
+# Check to see if the user has a Git based Gem in their Gemfile
+# @return 0
+# --
+has_git_gemfile() {
+  [ ! -f Gemfile ] && return 1
+  grep -qE "git(hub)?\s+(:|=>)\s+" Gemfile
+}
+
+#--
+
+install_ruby_depends() {
+  if [ -z "$SKIP_RUBY_DEPENDS" ]; then
+    if [ "$(operating_system)" = "alpine" ]; then
+      sudo apk --update add \
+          ruby-dev \
+          libxml2-dev \
+          readline-dev \
+          libxslt-dev \
+          build-base \
+          libffi-dev \
+          yaml-dev \
+          git
+
+    else
+      sudo apt-get update
+      sudo apt-get install --no-install-recommends --assume-yes \
+          ruby-dev \
+          libxml2-dev \
+          libreadline6-dev \
+          build-essential \
+          libxslt1-dev \
+          libyaml-dev \
+          libffi-dev \
+          git
+    fi
+  fi
+}
+
+#--
+# @return 0
+# Remove the installed Ruby dependencies.
+# @echo Nothing
+# --
+uninstall_ruby_depends() {
+  if [ -z "$KEEP_RUBY_DEPENDS" ] && [ -z "$SKIP_RUBY_DEPENDS" ]; then
+    if [ "$(operating_system)" = "alpine" ]; then
+      sudo apk del \
+          ruby-dev \
+          libffi-dev \
+          libxml2-dev \
+          readline-dev \
+          libxslt-dev \
+          build-base \
+          yaml-dev \
+          git
+
+    else
+      sudo apt-get autoremove --purge --assume-yes \
+          ruby-dev \
+          libxml2-dev \
+          libxslt1-dev \
+          libreadline6-dev \
+          build-essential \
+          libyaml-dev \
+          libffi-dev \
+          git
+    fi
+  fi
+}

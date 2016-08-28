@@ -1,0 +1,29 @@
+#!/bin/sh
+[ "$DEBUG" ] && set -x
+set -e
+
+root() {
+  echo "$(cd "$(dirname "$0")" && pwd)"
+}
+
+# --
+
+for f in $(ls $(root)/helpers.d/*)
+  do . $f
+done
+
+# --
+
+if [ $# -gt 0 ]; then
+  cmd=$(echo $1 |
+    sed 's/\-/_/g'
+  )
+
+  shift
+else
+  exit 0
+fi
+
+# --
+
+"$cmd" "$@"

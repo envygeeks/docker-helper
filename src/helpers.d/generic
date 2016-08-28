@@ -1,0 +1,82 @@
+#!/bin/sh
+[ "$DEBUG" ] && set -x
+set -e
+
+# --
+# @echo Nothing
+# Outputs the operating system from /etc/os-release so we can detect features.
+# @output 0
+# --
+operating_system() {
+  # cat /etc/os-release | grep ^ID= | sed -r 's/^ID=//'
+  echo "$(sh -c '. /etc/os-release; echo $ID')"
+}
+
+# --
+
+os() {
+  operating_system
+}
+
+# --
+# @echo Nothing
+# Creates an chowns a log file on your behalf.
+# @return 0
+# --
+create_log() {
+  dir=$(dirname $2)
+  if [ "$dir" != "." ]; then
+    mkdir -p /var/log/$dir
+    chown $1 /var/log/$dir
+  fi
+
+  touch /var/log/$2
+  chown $1 /var/log/$2
+}
+
+# --
+# @echo Nothing
+# Creates a directory with the specific user in one shot.
+# @example create_dir owner folder a+rX
+# @return 0
+# --
+create_dir() {
+  mkdir -p $2
+  chown $1 $2
+
+  if [ "$3" ]
+    then chmod $3 $2
+  fi
+}
+
+# --
+# @echo Nothing
+# Enables the Docker stdout logger that is by default disabled.
+# @return 0
+# --
+enable_stdout_logger() {
+  mkdir -p /etc/stdout.d
+  cp -R $(root)/templates.d/startup2.d/stdout \
+    /etc/startup2.d
+}
+
+# --
+# @echo On Bad checksum.
+# Compares a sha256 sum when you send your file and the sum.
+# @return 1 | 0
+# --
+test_sha() {
+  if ! test "$(sha256sum $1 |cut -d' ' -f1)" = "$2"; then
+    >&2 echo "Bad Download!"
+    exit 1
+  fi
+}
+
+# --
+# @echo UID (from `stat`)
+# Gives you the UID of a file so that you can get work done.
+# @return 0
+# --
+get_file_uid() {
+  echo $(stat -c '%u' $1)
+}

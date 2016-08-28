@@ -1,0 +1,16 @@
+dist: trusty
+sudo: required
+os: linux
+lang: ruby
+
+#
+
+rvm:
+  - 2.3.0
+
+#
+
+env:
+  matrix:
+    - OS=alpine
+    - OS=ubuntu

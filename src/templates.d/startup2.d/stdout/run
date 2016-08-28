@@ -1,0 +1,28 @@
+#!/bin/sh
+set -e
+pid_file=/etc/startup2.d/stdout/supervise/daemons
+touch $pid_file
+pids=
+
+if [ -d /etc/stdout.d ] && [ "$(ls -A /etc/stdout.d)" ]; then
+  for v in /etc/stdout.d/*; do
+    path=$(readlink $v)
+    mkdir -p "$(dirname $path)"
+    touch $path
+
+    tail -qf "$v" &
+    pid=$!
+
+    echo $pid > $pid_file
+    pids=$pids" $pid"
+  done
+else
+  touch /etc/stdout.d/empty
+  tail -qf /etc/stdout.d/empty &
+  pid=$!
+
+  echo $pid > $pid_file
+  pids=$pids" $pid"
+fi
+
+wait $pids

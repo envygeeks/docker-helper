@@ -1,0 +1,82 @@
+#!/bin/sh
+[ "$DEBUG" ] && set -x
+set -e
+
+# --
+# @echo Nothing
+# Cleans up common files we don't want hanging around on the image.
+# @return 0
+# --
+cleanup() {
+  if [ -z "$1" ]
+    then base_dir=
+    else base_dir=$(
+      echo $1 | sed -r 's/\/$//'
+    )
+  fi
+
+  find "$base_dir/" -type f -iname \*.dpkg-dist -delete
+  find "$base_dir/" -type f -iname \*.apk-new   -delete
+  find "$base_dir/" -type d -name .gem -print0 | xargs -0 rm -rf
+  find "$base_dir/usr/src" ! -path "$base_dir/usr/src" 2> /dev/null \
+    -delete || true
+
+  rm -rf "$base_dir/var/cache/apt/"*
+  rm -rf "$base_dir/var/cache/apk/"*
+  rm -rf "$base_dir/var/lib/apt/lists/"*
+  rm -rf "$base_dir/opt/jekyll/lib/ruby/gems/"*/cache/*
+  rm -rf "$base_dir/usr/lib/ruby/gems/"*/cache/*
+  rm -rf "$base_dir/usr/local/lib/ruby/gems/"*/cache/*
+  rm -rf "$base_dir/var/lib/gems/"*/cache/*
+
+  rm -rf "$base_dir/etc/hosts" 2> /dev/null || true
+  rm -rf "$base_dir/etc/host"  2> /dev/null || true
+  rm -rf "$base_dir/etc/mtab"  2> /dev/null || true
+
+  rm -rf "$base_dir/etc/cron.weekly"
+  rm -rf "$base_dir/etc/cron.daily"
+  rm -rf "$base_dir/etc/motd.d"
+  rm -rf "$base_dir/etc/motd"
+  rm -rf "$base_dir/etc/inittab"
+  rm -rf "$base_dir/etc/initab"
+  rm -rf "$base_dir/etc/fstab"
+  rm -rf "$base_dir/etc/crontabs"
+  rm -rf "$base_dir/etc/modules"
+  rm -rf "$base_dir/etc/modules-load.d"
+  rm -rf "$base_dir/etc/sysctl.conf"
+  rm -rf "$base_dir/etc/rc.local"
+  rm -rf "$base_dir/etc/acpi"
+  rm -rf "$base_dir/etc/init"
+  rm -rf "$base_dir/etc/rmt"
+  rm -rf "$base_dir/etc/rc0.d"
+  rm -rf "$base_dir/etc/rc1.d"
+  rm -rf "$base_dir/etc/rc2.d"
+  rm -rf "$base_dir/etc/rc3.d"
+  rm -rf "$base_dir/etc/rc4.d"
+  rm -rf "$base_dir/etc/rc5.d"
+  rm -rf "$base_dir/etc/rc6.d"
+  rm -rf "$base_dir/etc/rcS.d"
+  rm -rf "$base_dir/etc/conf.d"
+  rm -rf "$base_dir/etc/init.d"
+  rm -rf "$base_dir/etc/sysctl.d"
+  rm -rf "$base_dir/etc/runlevels"
+  rm -rf "$base_dir/etc/modprobe.d"
+  rm -rf "$base_dir/etc/logrotate.d"
+  rm -rf "$base_dir/etc/network"
+  rm -rf "$base_dir/etc/periodic"
+  rm -rf "$base_dir/etc/rc.conf"
+  rm -rf "$base_dir/etc/local.d"
+  rm -rf "$base_dir/etc/service"
+  rm -rf "$base_dir/etc/sv"
+  rm -rf "$base_dir/media"
+  rm -rf "$base_dir/mnt"
+
+  rm -rf "$base_dir/run/network"
+  rm -rf "$base_dir/var/spool/cron"
+  rm -rf "$base_dir/run/sendsigs.omit.d"
+  rm -rf "$base_dir/run/resolvconf"
+  rm -rf "$base_dir/run/shm"
+
+  find "$base_dir/tmp" ! -path "$base_dir/tmp" \
+    ! -iname bats.\*.src -delete
+}
