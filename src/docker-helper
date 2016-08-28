@@ -3,7 +3,7 @@
 set -e
 
 root() {
-  echo "$(cd "$(dirname "$0")" && pwd)"
+  echo "$(cd "$(dirname $(realpath "$0"))" && pwd)"
 }
 
 # --
