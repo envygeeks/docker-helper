@@ -28,6 +28,7 @@ cleanup() {
   rm -rf "$base_dir/usr/lib/ruby/gems/"*/cache/*
   rm -rf "$base_dir/usr/local/lib/ruby/gems/"*/cache/*
   rm -rf "$base_dir/var/lib/gems/"*/cache/*
+  rm -rf "$base_dir/usr/share/doc/"*
 
   rm -rf "$base_dir/etc/hosts" 2> /dev/null || true
   rm -rf "$base_dir/etc/host"  2> /dev/null || true
