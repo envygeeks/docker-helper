@@ -1,0 +1,68 @@
+#!/bin/sh
+set -e
+
+if ! which "usermod"; then
+  installed_usermod_in_script=true
+  if cat /etc/issue | grep -qEi alpine
+    then apk --update add shadow@community
+    else sudo apt-get update && \
+      sudo apt-get install passwd
+  fi
+fi
+
+# --
+
+if [ $# -gt 1 ]; then
+  echo "Only one user can be reset at a time."
+  exit 1
+fi
+
+# --
+
+sed -ri "s!:Linux User,{3}:!:linux-user:!" /etc/passwd
+canonical=$(echo $1 | awk -F: '{ print $1 }')
+  new_uid=$(echo $1 | awk -F: '{ print $2 }')
+  new_gid=$(echo $1 | awk -F: '{ print $3 }')
+
+# --
+
+old_gid=$(getent  group $canonical | awk -F: '{ print $3 }')
+old_uid=$(getent passwd $canonical | awk -F: '{ print $3 }')
+
+# --
+
+if [ -z "$new_gid" ]
+  then new_gid=$new_uid
+fi
+
+# --
+
+usermod -u $new_uid $canonical
+if getent group $canonical > /dev/null; then
+  groupmod -g $new_gid $canonical
+  find / -group $old_gid \
+  -not -path '/proc/*' \
+  -not -path '/sys/*' \
+  -not -path '/cdrom/*' \
+  -not -path '/dev/*' \
+  -exec chgrp -h $new_gid '{}' \+
+fi
+
+# --
+
+find / -user $old_uid \
+    -not -path '/proc/*' \
+    -not -path '/sys/*' \
+    -not -path '/cdrom/*' \
+    -not -path '/dev/*' \
+  -exec chown -h $new_uid '{}' \+
+
+# --
+
+if [ "$installed_usermod_in_script" = "true" ]; then
+  if cat /etc/issue | grep -qEi alpine
+    then apk --update del shadow
+    else sudo apt-get autoremove \
+      --purge passwd
+  fi
+fi

@@ -2,8 +2,9 @@
 
 # Docker Helper
 
-A set of bash functions (ran through a script) to aide your Docker Images. The
-goal is to normalize common functions when creating Docker images.
+A few bash scripts to make working with Docker images easier.  If you are
+looking for legacy Docker Helper that had dozens of more functions that were
+suited for old Docker, please see the legacy branch.
 
 # Installing
 
@@ -11,10 +12,8 @@ goal is to normalize common functions when creating Docker images.
 docker run --rm -it envygeeks/ubuntu bash
 mkdir -p /usr/src && cd /usr/src
 
-git clone https://github.com/envygeeks/docker-helpers.git
-mkdir -p /usr/local/share/docker && cp docker-helper/src/* -R \
-  /usr/local/share/docker
-
-ln -s /usr/local/share/docker/docker-helper \
-  /usr/local/bin/docker-helper
+git clone https://github.com/envygeeks/docker-helper.git
+cp docker-helper/src/* -R /
+cleanup && reset-user && \
+  test-sha
 ```

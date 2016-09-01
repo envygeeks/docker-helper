@@ -29,14 +29,9 @@ RSpec.configure do |config|
     @root.safe_copy(@tmpd.join("src"), :root => @root)
     @tmpd.join("Dockerfile").write <<~Dockerfile
       FROM envygeeks/#{ENV["OS"]}
-      RUN rm -rf /usr/local/share/docker
-      RUN mkdir -p /usr/local/share/docker
-      RUN rm -rf /usr/local/bin/docker-helper
-      RUN rm -rf /usr/local/bin/docker-helpers
-      RUN rm -rf /usr/local/bin/docker-test
-      COPY src/ /usr/local/share/docker/
       RUN mkdir -p /test
       WORKDIR /test
+      COPY src/ /
     Dockerfile
 
     @img = Docker::Image.build_from_dir(
@@ -50,41 +45,12 @@ RSpec.configure do |config|
 end
 
 # --
-# Run a command, attaching the path to Docker-Helper.
-# So that you do not have to do that yourself.
-# --
-def helper_command(*cmds)
-  if cmds.size > 1
-    run_commands(cmds[0...-1],
-      "/usr/local/share/docker/docker-helper #{
-        cmds.last
-      }"
-    )
-
-  else
-    run_commands(
-      "/usr/local/share/docker/docker-helper #{
-        cmds.first
-      }"
-    )
-  end
-end
-
-# --
-# Fire and forget a command on the instance.
-# This is globally done.
-# --
-def basic_command(*cmds)
-  return run_commands(*cmds).exit_status
-end
-
-# --
 # Work around a server spec limitation by wrapping our own method.  See
 # when serverspec is inside of a spec, it will create a new instance always
 # so we tap into self.class.command so that we don't have that unoptimized
 # action that can slow us down more than uninstalling.
 # --
-def run_commands(*cmds)
+def run_command(*cmds)
   cmds = cmds.join(" && ")
   if self.class.respond_to?(:command)
     then self.class.command(
