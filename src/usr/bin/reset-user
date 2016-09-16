@@ -41,14 +41,16 @@ fi
 status=0
 usermod -u $new_uid $canonical || status=$?
 if [ "$(id -u $canonical)" = "$new_uid" ]; then
+  status=0
+
   if getent group $canonical > /dev/null; then
     groupmod -g $new_gid $canonical
     find / -group $old_gid \
-    -not -path '/proc/*' \
-    -not -path '/sys/*' \
-    -not -path '/cdrom/*' \
-    -not -path '/dev/*' \
-    -exec chgrp -h $new_gid '{}' \+
+        -not -path '/proc/*' \
+        -not -path '/sys/*' \
+        -not -path '/cdrom/*' \
+        -not -path '/dev/*' \
+      -exec chgrp -h $new_gid '{}' \+
   fi
 
   # --
