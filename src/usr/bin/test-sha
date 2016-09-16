@@ -1,4 +1,5 @@
 #!/bin/sh
+[ -n "$DEBUG" ] && set -x
 set -e
 
 if ! test "$(sha256sum $1 |cut -d' ' -f1)" = "$2"; then

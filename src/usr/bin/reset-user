@@ -1,4 +1,5 @@
 #!/bin/sh
+[ -n "$DEBUG" ] && set -x
 set -e
 
 if ! which "usermod"; then
