@@ -38,25 +38,28 @@ fi
 
 # --
 
-usermod -u $new_uid $canonical
-if getent group $canonical > /dev/null; then
-  groupmod -g $new_gid $canonical
-  find / -group $old_gid \
-  -not -path '/proc/*' \
-  -not -path '/sys/*' \
-  -not -path '/cdrom/*' \
-  -not -path '/dev/*' \
-  -exec chgrp -h $new_gid '{}' \+
-fi
-
-# --
-
-find / -user $old_uid \
+status=0
+usermod -u $new_uid $canonical || status=$?
+if [ "$(id -u $canonical)" = "$new_uid" ]; then
+  if getent group $canonical > /dev/null; then
+    groupmod -g $new_gid $canonical
+    find / -group $old_gid \
     -not -path '/proc/*' \
     -not -path '/sys/*' \
     -not -path '/cdrom/*' \
     -not -path '/dev/*' \
-  -exec chown -h $new_uid '{}' \+
+    -exec chgrp -h $new_gid '{}' \+
+  fi
+
+  # --
+
+  find / -user $old_uid \
+      -not -path '/proc/*' \
+      -not -path '/sys/*' \
+      -not -path '/cdrom/*' \
+      -not -path '/dev/*' \
+    -exec chown -h $new_uid '{}' \+
+fi
 
 # --
 
@@ -67,3 +70,7 @@ if [ "$installed_usermod_in_script" = "true" ]; then
       --purge passwd
   fi
 fi
+
+# --
+
+exit $status
