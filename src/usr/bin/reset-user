@@ -5,7 +5,7 @@ set -e
 if ! which "usermod"; then
   installed_usermod_in_script=true
   if cat /etc/issue | grep -qEi alpine
-    then apk --update add shadow@community
+    then apk --update add shadow@community || apk --update add  shadow@edgeCommunity
     else sudo apt-get update && \
       sudo apt-get install passwd
   fi
