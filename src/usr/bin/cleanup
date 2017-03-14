@@ -55,7 +55,7 @@ find "$base_dir/usr/src" \
   ! -path /sys \
   ! -path /tmp \
   ! -path "$base_dir/usr/src" \
-    -delete || true
+    -delete 2> /dev/null || true
 
 rm -rf "$base_dir/var/cache/apt/"*
 rm -rf "$base_dir/var/cache/apk/"*
