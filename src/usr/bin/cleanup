@@ -13,49 +13,13 @@ elif [ -z "$1" ]
   )
 fi
 
-find "$base_dir/" -type f \
-  ! -path /boot \
-  ! -path /cdrom \
-  ! -path /mnt \
-  ! -path /run \
-  ! -path /proc \
-  ! -path /sys \
-  ! -path /tmp \
-    -iname \*.dpkg-dist \
-    -delete
 
-find "$base_dir/" -type f \
-  ! -path /boot \
-  ! -path /cdrom \
-  ! -path /mnt \
-  ! -path /run \
-  ! -path /proc \
-  ! -path /sys \
-  ! -path /tmp \
-    -iname \*.apk-new \
-      -delete
+find "$base_dir/usr/src" -delete 2> /dev/null || true
+find "$base_dir"/{,bin,usr,etc,lib,sbin,usr,var,root,home} -type f -iname \*.dpkg-dist -delete
+find "$base_dir"/{,bin,usr,etc,lib,sbin,usr,var,root,home} -type f -iname \*.apk-new -delete
+find "$base_dir"/{,bin,usr,etc,lib,sbin,usr,var,root,home} -type d \
+  -name .gem -print0 | xargs -0 rm -rf
 
-find "$base_dir/" -type d \
-  ! -path /boot \
-  ! -path /cdrom \
-  ! -path /mnt \
-  ! -path /run \
-  ! -path /proc \
-  ! -path /sys \
-  ! -path /tmp \
-    -name .gem -print0 | \
-      xargs -0 rm -rf
-
-find "$base_dir/usr/src" \
-  ! -path /boot \
-  ! -path /cdrom \
-  ! -path /mnt \
-  ! -path /run \
-  ! -path /proc \
-  ! -path /sys \
-  ! -path /tmp \
-  ! -path "$base_dir/usr/src" \
-    -delete 2> /dev/null || true
 
 rm -rf "$base_dir/var/cache/apt/"*
 rm -rf "$base_dir/var/cache/apk/"*
