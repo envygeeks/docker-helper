@@ -15,9 +15,9 @@ fi
 
 
 find "$base_dir/usr/src" -delete 2> /dev/null || true
-find "$base_dir"/{,bin,usr,etc,lib,sbin,usr,var,root,home} -type f -iname \*.dpkg-dist -delete
-find "$base_dir"/{,bin,usr,etc,lib,sbin,usr,var,root,home} -type f -iname \*.apk-new -delete
-find "$base_dir"/{,bin,usr,etc,lib,sbin,usr,var,root,home} -type d \
+find "$base_dir"/{bin,usr,etc,lib,sbin,usr,var,root,home} -type f -iname \*.dpkg-dist -delete
+find "$base_dir"/{bin,usr,etc,lib,sbin,usr,var,root,home} -type f -iname \*.apk-new -delete
+find "$base_dir"/{bin,usr,etc,lib,sbin,usr,var,root,home} -type d \
   -name .gem -print0 | xargs -0 rm -rf
 
 
