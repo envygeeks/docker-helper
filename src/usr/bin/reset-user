@@ -46,15 +46,15 @@ if [ "$(id -u $canonical)" = "$new_uid" ]; then
   if getent group $canonical > /dev/null; then
     groupmod -g $new_gid $canonical
     find /{bin,usr,etc,lib,sbin,usr,var,root,home} \
-      -group $old_gid -exec chgrp -h $new_gid \
-      '{}' \+
+      -group $old_gid -print0 | \
+      xargs chgrp -h $new_gid
   fi
 
   # --
 
   find /{bin,usr,etc,lib,sbin,usr,var,root,home} \
-    -user $old_uid -exec chown -h $new_uid \
-    '{}' \+
+    -user $old_uid -print0 | \
+    xargs chown -h $new_uid
 fi
 
 # --
